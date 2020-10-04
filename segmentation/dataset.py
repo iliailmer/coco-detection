@@ -4,6 +4,8 @@ from pycocotools import coco
 from skimage import io
 import os
 import albumentations as A
+import numpy as np
+import torch
 
 
 class COCOData(LightningDataModule):
@@ -22,27 +24,20 @@ class COCOData(LightningDataModule):
         self.transforms = transforms
 
     def __getitem__(self, index):
-        """
-        Args:
-            index (int): Index
-
-        Returns:
-            tuple: Tuple (image, target). target is the object returned by ``coco.loadAnns``.
-        """
         coco_ = self.coco
         img_id = self.ids[index]
         ann_ids = coco_.getAnnIds(imgIds=img_id)
         target = coco_.loadAnns(ann_ids)
-        mask = coco_.annToMask(target[0])
-        for i in range(len(target)):
-            mask += coco_.annToMask(target[i]) * i
-
+        bboxes = [list(x["bbox"]) for x in target]
+        labels = [x["category_id"] for x in target]
         path = coco_.loadImgs(img_id)[0]["file_name"]
-
         img = io.imread(os.path.join(self.img_dir, path))
         if self.stage == "train":
-            augm = self.transforms(image=img, mask=mask)
-            return dict(features=augm["image"], targets=augm["mask"])
+            augm = self.transforms(image=img, bboxes=bboxes)
+            return dict(
+                images=augm["image"],
+                targets=dict(boxes=augm["bboxes"], labels=labels),
+            )
         else:
             augm = self.transforms(image=img)
-            return dict(features=augm["image"])
+            return dict(images=augm["image"])
