@@ -1,14 +1,11 @@
-from pytorch_lightning.core import LightningDataModule
-from torch.utils.data import Dataset, DataLoader
+from torch.utils.data import Dataset
 from pycocotools import coco
 from skimage import io
 import os
 import albumentations as A
-import numpy as np
-import torch
 
 
-class COCOData(LightningDataModule):
+class COCOData(Dataset):
     def __init__(
         self,
         ann_file: str,
